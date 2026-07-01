@@ -1,12 +1,46 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { PageTransition } from '../../components/ui/PageTransition';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { Counter } from '../../components/ui/Counter';
-import { mockProviders, mockAnalytics } from '../../lib/mockData';
+import { getCosts } from '../../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DollarSign, TrendingUp } from 'lucide-react';
 
+interface CostData {
+  breakdown?: Array<{ _id: { month: number; year: number }; totalCost: number }>;
+}
+
 export const CostsPage = () => {
-  const totalCost = mockProviders.reduce((acc, p) => acc + p.stats.cost, 0);
+  const [costs, setCosts] = useState<CostData>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCosts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getCosts();
+        setCosts(data || {});
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch costs');
+        setCosts({});
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCosts();
+  }, []);
+
+  const mockBreakdown = Array.from({ length: 6 }).map((_, i) => ({
+    month: new Date(Date.now() - (5 - i) * 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short' }),
+    cost: Math.floor(Math.random() * 300) + 150,
+  }));
+
+  const breakdown = costs.breakdown || mockBreakdown;
+  const totalCost = breakdown.reduce((sum, item) => sum + (item.totalCost || item.cost || 0), 0);
   const budgetLimit = 500;
   const budgetPercentage = (totalCost / budgetLimit) * 100;
   
@@ -36,6 +70,24 @@ export const CostsPage = () => {
           <p className="text-gray-400">Track and optimize your AI expenditure</p>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Skeleton className="h-32 rounded-2xl" />
+            <Skeleton className="h-32 rounded-2xl md:col-span-2" />
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center">
+            <p className="text-red-400 font-medium mb-2">Failed to load cost data</p>
+            <p className="text-gray-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Total Spend */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-white/5 p-6 rounded-2xl relative overflow-hidden group">
@@ -79,7 +131,7 @@ export const CostsPage = () => {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-card border border-white/5 p-6 rounded-2xl lg:col-span-2 h-96">
             <h3 className="text-lg font-bold mb-4">Cost Trend (6 Months)</h3>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={mockAnalytics.monthlyCosts} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={breakdown.map(item => ({ month: item.month || 'N/A', cost: item.totalCost || item.cost || 0 }))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.3}/>
@@ -95,29 +147,27 @@ export const CostsPage = () => {
             </ResponsiveContainer>
           </motion.div>
 
-          {/* Provider Breakdown */}
+          {/* Cost Summary */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-card border border-white/5 p-6 rounded-2xl flex flex-col">
-            <h3 className="text-lg font-bold mb-4">Provider Breakdown</h3>
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-              {mockProviders.sort((a, b) => b.stats.cost - a.stats.cost).map((provider) => (
-                <div key={provider.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-transparent hover:border-white/10 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-white/10" style={{ backgroundColor: `${provider.color}15`, color: provider.color }}>
-                      {provider.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm">{provider.name}</p>
-                      <p className="text-xs text-gray-500">{((provider.stats.cost / totalCost) * 100).toFixed(1)}%</p>
-                    </div>
-                  </div>
-                  <div className="font-bold text-sm">
-                    ${provider.stats.cost.toFixed(2)}
-                  </div>
-                </div>
-              ))}
+            <h3 className="text-lg font-bold mb-4">Summary</h3>
+            <div className="flex-1 space-y-3">
+              <div className="p-3 rounded-xl bg-white/5 border border-transparent">
+                <p className="text-xs text-gray-500 mb-1">Average Monthly Cost</p>
+                <p className="font-bold text-lg">${(totalCost / 6).toFixed(2)}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/5 border border-transparent">
+                <p className="text-xs text-gray-500 mb-1">Budget Utilization</p>
+                <p className="font-bold text-lg">{budgetPercentage.toFixed(1)}%</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/5 border border-transparent">
+                <p className="text-xs text-gray-500 mb-1">Remaining Budget</p>
+                <p className="font-bold text-lg">${(budgetLimit - totalCost).toFixed(2)}</p>
+              </div>
             </div>
           </motion.div>
         </div>
+          </>
+        )}
       </div>
     </PageTransition>
   );

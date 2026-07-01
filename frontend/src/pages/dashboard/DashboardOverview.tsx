@@ -1,17 +1,55 @@
+import { useState, useEffect } from 'react';
 import { PageTransition } from '../../components/ui/PageTransition';
 import { Counter } from '../../components/ui/Counter';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { AIOrbit } from '../../components/dashboard/AIOrbit';
 import { ActivityFeed } from '../../components/dashboard/ActivityFeed';
+import { getProviders, getCosts, getUsageLogs, getAnalytics } from '../../lib/api';
 import { Zap, TrendingUp, ShieldAlert } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const DashboardOverview = () => {
-  const stats = [
-    { label: 'Total Requests', value: 14520, prefix: '', suffix: '', decimals: 0 },
-    { label: 'Tokens Processed', value: 2.4, prefix: '', suffix: 'M', decimals: 1 },
-    { label: 'Total Cost', value: 342, prefix: '$', suffix: '', decimals: 2 },
-    { label: 'Active Providers', value: 8, prefix: '', suffix: '', decimals: 0 },
-  ];
+  const [stats, setStats] = useState([
+    { label: 'Total Requests', value: 0, prefix: '', suffix: '', decimals: 0 },
+    { label: 'Tokens Processed', value: 0, prefix: '', suffix: 'M', decimals: 1 },
+    { label: 'Total Cost', value: 0, prefix: '$', suffix: '', decimals: 2 },
+    { label: 'Active Providers', value: 0, prefix: '', suffix: '', decimals: 0 },
+  ]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [providers, usage, costs] = await Promise.all([
+          getProviders().catch(() => []),
+          getUsageLogs().catch(() => []),
+          getCosts().catch(() => ({})),
+        ]);
+
+        const totalRequests = Array.isArray(usage) ? usage.length : 0;
+        const totalTokens = Array.isArray(usage) 
+          ? usage.reduce((sum, log) => sum + ((log.inputTokens || 0) + (log.outputTokens || 0)), 0) / 1000000
+          : 0;
+        const totalCost = Array.isArray(usage)
+          ? usage.reduce((sum, log) => sum + (log.cost || 0), 0)
+          : 0;
+        const activeProvidersCount = Array.isArray(providers) ? providers.length : 0;
+
+        setStats([
+          { label: 'Total Requests', value: totalRequests, prefix: '', suffix: '', decimals: 0 },
+          { label: 'Tokens Processed', value: totalTokens, prefix: '', suffix: 'M', decimals: 1 },
+          { label: 'Total Cost', value: totalCost, prefix: '$', suffix: '', decimals: 2 },
+          { label: 'Active Providers', value: activeProvidersCount, prefix: '', suffix: '', decimals: 0 },
+        ]);
+      } catch (err) {
+        console.error('Failed to fetch stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   return (
     <PageTransition>
@@ -25,22 +63,28 @@ export const DashboardOverview = () => {
 
         {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((stat, i) => (
-            <motion.div 
-              key={stat.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="bg-card border border-white/5 p-5 rounded-2xl relative overflow-hidden group hover:border-primary/30 transition-colors"
-            >
-              <div className="absolute -right-4 -top-4 w-16 h-16 bg-primary/10 rounded-full blur-xl group-hover:bg-primary/20 transition-colors" />
-              <p className="text-sm text-gray-400 mb-1">{stat.label}</p>
-              <p className="text-3xl font-bold">
-                {stat.prefix}
-                <Counter end={stat.value} duration={1} suffix={stat.suffix} decimals={stat.decimals} />
-              </p>
-            </motion.div>
-          ))}
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 rounded-2xl" />
+            ))
+          ) : (
+            stats.map((stat, i) => (
+              <motion.div 
+                key={stat.label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-card border border-white/5 p-5 rounded-2xl relative overflow-hidden group hover:border-primary/30 transition-colors"
+              >
+                <div className="absolute -right-4 -top-4 w-16 h-16 bg-primary/10 rounded-full blur-xl group-hover:bg-primary/20 transition-colors" />
+                <p className="text-sm text-gray-400 mb-1">{stat.label}</p>
+                <p className="text-3xl font-bold">
+                  {stat.prefix}
+                  <Counter end={stat.value} duration={1} suffix={stat.suffix} decimals={stat.decimals} />
+                </p>
+              </motion.div>
+            ))
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

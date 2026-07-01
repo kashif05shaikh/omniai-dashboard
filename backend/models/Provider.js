@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const providerSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  user: { type: String, required: true }, // Clerk userId (string)
   name: { type: String, required: true }, // e.g., OpenAI, Claude
   accountName: { type: String, required: true },
   apiKeyRef: { type: String }, // Encrypted reference/placeholder

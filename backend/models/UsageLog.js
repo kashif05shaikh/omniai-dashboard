@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const usageLogSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  user: { type: String, required: true }, // Clerk userId (string)
   provider: { type: String, required: true }, // name of provider
   model: { type: String, required: true }, // e.g., gpt-4o
   requestCount: { type: Number, default: 1 },
