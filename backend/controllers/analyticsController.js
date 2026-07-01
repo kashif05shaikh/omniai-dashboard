@@ -4,7 +4,7 @@ exports.getAnalyticsSummary = async (req, res, next) => {
   try {
     // Example: group by provider
     const summary = await UsageLog.aggregate([
-      { $match: { user: req.user._id } }, // note: req.user.id is string, but ObjectId needed ideally. Handled by fallback.
+      { $match: { user: req.auth.userId } },
       { 
         $group: {
           _id: "$provider",

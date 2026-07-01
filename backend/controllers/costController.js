@@ -3,6 +3,7 @@ const UsageLog = require('../models/UsageLog');
 exports.getCostBreakdown = async (req, res, next) => {
   try {
     const breakdown = await UsageLog.aggregate([
+      { $match: { user: req.auth.userId } },
       { 
         $group: {
           _id: {

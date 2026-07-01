@@ -3,7 +3,7 @@ const UsageLog = require('../models/UsageLog');
 exports.getUsageLogs = async (req, res, next) => {
   try {
     const { provider, startDate, endDate } = req.query;
-    let query = { user: req.user.id };
+    let query = { user: req.auth.userId };
     
     if (provider) query.provider = provider;
     if (startDate || endDate) {
@@ -24,7 +24,7 @@ exports.createUsageLog = async (req, res, next) => {
       res.status(400); throw new Error('Provider and model are required');
     }
     const log = await UsageLog.create({
-      user: req.user.id,
+      user: req.auth.userId,
       provider,
       model,
       inputTokens: inputTokens || 0,

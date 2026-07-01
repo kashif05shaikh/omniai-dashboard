@@ -1,6 +1,9 @@
 import { createBrowserRouter, RouterProvider, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Landing } from './pages/Landing';
+import { SignInPage } from './pages/SignInPage';
+import { SignUpPage } from './pages/SignUpPage';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { DashboardOverview } from './pages/dashboard/DashboardOverview';
 import { ProvidersPage } from './pages/dashboard/ProvidersPage';
@@ -26,8 +29,20 @@ const router = createBrowserRouter([
     element: <Landing />,
   },
   {
+    path: '/sign-in',
+    element: <SignInPage />,
+  },
+  {
+    path: '/sign-up',
+    element: <SignUpPage />,
+  },
+  {
     path: '/app',
-    element: <DashboardLayout />,
+    element: (
+      <ProtectedRoute>
+        <DashboardLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         element: <AnimatedOutlet />,
